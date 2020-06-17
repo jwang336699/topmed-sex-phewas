@@ -1,5 +1,5 @@
-#' Performs a generic PheWAS (Fisher exact for categorical, Mann-Whitney U for continuous, Bonferroni
-#' correction) on data extracted from PIC-SURE.
+#' Performs a generic PheWAS (logistic regression coefficient test, Bonferroni correction) on 
+#' data extracted from PIC-SURE.
 #'
 #' @param dt A \code{data.frame} produced by running a PIC-SURE query
 #' @param vdict An \code{data.frame} as produced by the "get_multiIndex_variablesDict"
