@@ -87,7 +87,7 @@ phewas <- function(dt, vdict, varset, dependent, dep_cat, dep_keep, dep_classes)
   warnings = list()
   
   # perform all tests
-  for (independent in c(categorical_varnames, continuous_varnames)) {
+  for (independent in c(categorical, continuous)) {
     int <- na.omit(dt[, c(dependent, independent)])
     int <- int[int[[independent]] != '',]
     tryCatch({
@@ -118,4 +118,59 @@ phewas <- function(dt, vdict, varset, dependent, dep_cat, dep_keep, dep_classes)
   vdict_enhanced$log_adj_pvalues <- -log10(vdict_enhanced$adj_pvalues)
   
   return(vdict_enhanced)
+}
+
+#' Plots the results of a PheWAS analysis produced on data obtained from PIC-SURE. Each variable
+#' is represented by one triangle such that:
+#' the triangle has upward orientation if the log odds ratio is positive
+#' the triangle's size is proportional to the magnitude of the log odds ratio
+#' the color of the triangle corresponds to whether a variable is continuous (dark) or not (light)
+#'
+#' @param phewas_results A \code{data.frame} produced by the above phewas function
+#' @param dep the name of the dependent variable, to be used in the plot title
+#' @param outdir path where the plot should be deposited
+#'
+#' @return N/A
+#' @import ggplot2
+#' @importFrom ggplot2 ggplot, theme
+#' @export
+plot_phewas <- function(phewas_results, outdir) {
+  # set plot size
+  options(repr.plot.width=12, repr.plot.height=8)
+  
+  # various theme settings; can be modified
+  my_theme <- theme_bw() +
+    theme(axis.title.y = element_text(face="italic", size=15),
+          title = element_text(size=20),
+          axis.title.x = element_text(size=15),
+          axis.text.x = element_text(angle=35, hjust=1),
+          legend.position = "none",
+          panel.grid.major.x = element_blank()
+    )
+  
+  # set colors for class of variables
+  paired_colors <- c("navyblue", "lightskyblue")
+  
+  # create columns indicating sign and magnitude of log odds ratio
+  phewas_results$odds_size = abs(log10(phewas_results$odds_ratio))
+  phewas_results$odds_class <- ifelse(phewas_results$odds_ratio >= 1, 1, 0)
+  
+  # select most significant variables to annotate
+  largest_pvalues_indices <- order(phewas_results[["log_adj_pvalues"]], decreasing=T)[1:4]
+  phewas_results$to_annotate <- "no"
+  phewas_results[largest_pvalues_indices, "to_annotate"] <- "yes"
+  
+  # and plot!
+  ggplot(phewas_results, aes(x=category, y=log_adj_pvalues)) +
+    geom_jitter(alpha=1, aes_string(colour="category", shape="odds_class", size="odds_size"),
+                width=0.5) +
+    geom_hline(yintercept=-log10(0.05), linetype="dashed") +
+    scale_y_continuous(expand = c(0, 20) ) +
+    scale_color_manual(values = rep(paired_colors, times=20)) + scale_shape_manual(values=c(6, 2)) + scale_size_continuous(range=c(1,10)) +
+    geom_label_repel( data=subset(phewas_results, to_annotate=="yes"), aes(label=simplified_name), size=3.5) +
+    labs(title=paste0("Phenotype-", dep, " association"),
+         x="Phenotypes",
+         y="- log10(p-values)",
+         colour="Phenotypes categories") +
+    my_theme
 }
