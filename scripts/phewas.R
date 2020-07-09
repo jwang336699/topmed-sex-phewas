@@ -6,7 +6,7 @@
 #' function found in utils.R
 #' @param varset A logical vector containing an entry for each row of vdict such that 
 #' an entry is true iff it is a desired variable for analysis
-#' @param dependent A character singleton containing the (simplified) name of the dependent variable
+#' @param dependent A character singleton containing the (df) name of the dependent variable
 #' @param dep_cat A boolean singleton which is true iff dependent is categorical
 #' @param dep_keep A rule taking values of dependent to a boolean; used to remove unwanted entries
 #' @param dep_classes A rule taking values of dependent to a boolean; used for dichotomizing data
@@ -27,7 +27,6 @@ phewas <- function(dt, vdict, varset, dependent, dep_cat, dep_keep, dep_classes)
   continuous <- vdict[!cat_vars & varset, ][["df_name"]]
   
   # eliminate the dependent variable from the lists of independent variables
-  dependent <- vdict[vdict[["simplified_name"]] == dependent,][["df_name"]]
   if (dep_cat) {
     categorical <<- categorical[-which(categorical == dependent)]
   } else {
@@ -76,7 +75,7 @@ phewas <- function(dt, vdict, varset, dependent, dep_cat, dep_keep, dep_classes)
     # ret[[1]] <- anova(model, model_reduced, test =  "LRT")[2, "Pr(>Chi)"]
     ret[[1]] <- summary(model)$coefficients[2,4]
     ret[[2]] <- exp(coef(model))[2]
-    ret[[3]] <- suppressMessages(paste(round(confint(model)[2,1], 5), round(confint(model)[2,2], 5), sep = '-'))
+    ret[[3]] <- suppressMessages(paste(round(exp(confint(model)[2,1]), 5), round(exp(confint(model)[2,2]), 5), sep = '-'))
     ret[[4]] <- nrow(data)
     
     return(ret)    
@@ -173,4 +172,14 @@ plot_phewas <- function(phewas_results, outdir) {
          y="- log10(p-values)",
          colour="Phenotypes categories") +
     my_theme
+}
+
+convenience <- function(case, control) {
+  case <- case[order(case[["simplified_name"]]),]
+  control <- control[order(control[["simplified_name"]]),]
+  
+  filtered <- case[control$adj_pvalues > 0.05 | is.na(control$adj_pvalues),]
+  dfiltered_phewas <- filtered[!is.na(filtered$adj_pvalues),]
+  dfiltered_phewas <- dfiltered_phewas[order(dfiltered_phewas$odds_ratio, decreasing = T), c(5,9,11,12,16,17,18,20)]
+  return(dfiltered_phewas)
 }
